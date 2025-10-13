@@ -1,21 +1,33 @@
 package school.sptech;
 
+import java.util.List;
+
 public class Instituicao {
 
     private Integer idInstituicao;
     private Integer idMunicipio;
     private String nome;
     private String uf;
+    private List<Curso> cursos;
 
 
     public Instituicao() {
     }
 
-    public Instituicao(Integer idInstituicao, Integer idMunicipio, String nome, String uf) {
+    public Instituicao(Integer idInstituicao, Integer idMunicipio, String nome, String uf, List<Curso> cursos) {
         this.idInstituicao = idInstituicao;
         this.idMunicipio = idMunicipio;
         this.nome = nome;
         this.uf = uf;
+        this.cursos = cursos;
+    }
+
+    public List<Curso> getCursos() {
+        return cursos;
+    }
+
+    public void setCursos(List<Curso> cursos) {
+        this.cursos = cursos;
     }
 
     public Integer getIdInstituicao() {
@@ -50,6 +62,7 @@ public class Instituicao {
         this.uf = uf;
     }
 
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Instituicao{");
@@ -57,6 +70,7 @@ public class Instituicao {
         sb.append(", idMunicipio=").append(idMunicipio);
         sb.append(", nome='").append(nome).append('\'');
         sb.append(", uf='").append(uf).append('\'');
+        sb.append(", cursos=").append(cursos);
         sb.append('}');
         return sb.toString();
     }
