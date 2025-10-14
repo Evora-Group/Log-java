@@ -6,7 +6,7 @@ public class CursosDao {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public CursosDao(JdbcTemplate jdbcTemplate) {
+    public CursosDao(JdbcTemplate jdbcTemplate) throws InterruptedException {
         this.jdbcTemplate = jdbcTemplate;
     }
 

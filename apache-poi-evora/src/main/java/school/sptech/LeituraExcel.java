@@ -5,52 +5,85 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
+
+
 public class LeituraExcel {
+
+    private static final Logger logger = LoggerFactory.getLogger(LeituraExcel.class);
+    private static final Logger loggerDao = LoggerFactory.getLogger(InstituicaoDao.class);
 
     public LeituraExcel() {
 
     }
 
     public List<Instituicao> lerInstituicoes(String caminhoArquivoInstituicao) {
+        logger.info("Iniciando a leitura do excel: " + caminhoArquivoInstituicao);
+
         List<Instituicao> instituicoes = new ArrayList<>();
-        try (FileInputStream leitura = new FileInputStream(caminhoArquivoInstituicao);
-             Workbook planinhas = new XSSFWorkbook(leitura)) {
+
+        Thread logThread = new Thread(() -> {
+            try {
+                int contador = 0;
+                while (!Thread.currentThread().isInterrupted()) {
+                    Thread.sleep(5000);
+                    contador += 5;
+                    logger.info("Carregando arquivo Excel... (" + contador + "s)");
+                }
+            } catch (InterruptedException e) {
+                // Thread interrompida: fim do log periódico
+            }
+        });
+        logThread.start();
+
+        try (FileInputStream leitura = new FileInputStream(caminhoArquivoInstituicao)) {
+            Workbook planinhas = new XSSFWorkbook(leitura); // operação lenta
+
+            logThread.interrupt(); // para o log de progresso
 
             Sheet planinha = planinhas.getSheetAt(0);
+            logger.info("Selecionando a primeira planilha das intituições");
 
             for (int i = 1; i <= planinha.getLastRowNum(); i++) {
+                if (i == 1) {
+                    logger.info("Iniciando a varredura das linhas");
+                }
+
                 Row linha = planinha.getRow(i);
                 if (linha == null) continue;
-                if (((linha.getCell(0).getNumericCellValue()) == 2023) && (linha.getCell(1).getStringCellValue().equalsIgnoreCase("SP"))){
 
-                    Cell ufCell = linha.getCell(1);
-                    Cell idMunicipioCell = linha.getCell(2);
-                    Cell idIesCell = linha.getCell(7);
-                    Cell nomeCell = linha.getCell(8);
-
-                    if (ufCell == null || idMunicipioCell == null || idIesCell == null) {
-                        continue;
-                    }
+                if (linha.getCell(0).getNumericCellValue() == 2023 &&
+                        linha.getCell(1).getStringCellValue().equalsIgnoreCase("SP")) {
 
                     Instituicao instituicao = new Instituicao();
-                    instituicao.setNome(nomeCell.getStringCellValue().toUpperCase());
-                    instituicao.setIdInstituicao((int) idIesCell.getNumericCellValue());
-                    instituicao.setIdMunicipio((int) idMunicipioCell.getNumericCellValue());
-                    instituicao.setUf(ufCell.getStringCellValue().toUpperCase());
+                    instituicao.setUf(linha.getCell(1).getStringCellValue().toUpperCase());
+                    instituicao.setIdMunicipio((int) linha.getCell(2).getNumericCellValue());
+                    instituicao.setIdInstituicao((int) linha.getCell(7).getNumericCellValue());
+                    instituicao.setNome(linha.getCell(8).getStringCellValue().toUpperCase());
 
-//                    instituicao.setCursos(lerCursos(caminhoArquivoCurso, instituicao.getIdInstituicao()));
+                    if (instituicoes.size() % 250 == 0) {
+                        loggerDao.info("Inserindo os valores no Banco de Dados");
+                    }
 
                     instituicoes.add(instituicao);
                 }
             }
+
+            logger.info("Finalizada a varredura das linhas");
+            logger.info("Carga finalizada");
+
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            logThread.interrupt(); // garante interrupção mesmo em erro
         }
+
         return instituicoes;
     }
 

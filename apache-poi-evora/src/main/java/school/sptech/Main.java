@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Main {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
 
       ConexaoBanco conexaoBanco = new ConexaoBanco();
       LeituraExcel leituraExcel = new LeituraExcel();
@@ -23,7 +23,7 @@ public class Main {
 //          }
 
 
-          System.out.println(instituicao);
+//          System.out.println(instituicao);
 
       }
 
