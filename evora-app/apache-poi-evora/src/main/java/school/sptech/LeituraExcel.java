@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 
@@ -23,7 +24,7 @@ public class LeituraExcel {
 
     }
 
-    public List<Instituicao> lerInstituicoes(String caminhoArquivoInstituicao) {
+    public List<Instituicao> lerInstituicoes(InputStream caminhoArquivoInstituicao) {
         logger.info("Iniciando a leitura do excel: " + caminhoArquivoInstituicao);
 
         List<Instituicao> instituicoes = new ArrayList<>();
@@ -42,8 +43,8 @@ public class LeituraExcel {
         });
         logThread.start();
 
-        try (FileInputStream leitura = new FileInputStream(caminhoArquivoInstituicao)) {
-            Workbook planinhas = new XSSFWorkbook(leitura); // operação lenta
+        try (Workbook planinhas = new XSSFWorkbook(caminhoArquivoInstituicao)) {
+             // operação lenta
 
             logThread.interrupt(); // para o log de progresso
 
