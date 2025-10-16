@@ -29,9 +29,9 @@ public class Main {
 
             List<Instituicao> instituicoes = leituraExcel.lerInstituicoes(s3ObjectStream);
 
-            for (Instituicao instituicao : instituicoes) {
-                instituicaoDao.save(instituicao);
-            }
+//            for (Instituicao instituicao : instituicoes) {
+//                instituicaoDao.save(instituicao);
+//            }
 
         } catch (Exception e) {
             System.err.println("Ocorreu um erro fatal durante o processo.");
