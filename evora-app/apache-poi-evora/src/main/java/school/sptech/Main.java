@@ -17,7 +17,7 @@ public class Main {
       InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
       CursosDao cursoDao = new CursosDao(conexaoBanco.getJdbcTemplate());
 
-      Region region = Region.SA_EAST_1;
+      Region region = Region.US_EAST_1;
       String s3Path = System.getenv("S3_FILE_KEY");
 
 
