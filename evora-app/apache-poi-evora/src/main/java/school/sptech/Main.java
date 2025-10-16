@@ -4,44 +4,40 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
 
-  public static void main(String[] args) throws InterruptedException, URISyntaxException {
+    public static void main(String[] args) throws InterruptedException {
 
-      ConexaoBanco conexaoBanco = new ConexaoBanco();
-      LeituraExcel leituraExcel = new LeituraExcel();
-      InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
-      CursosDao cursoDao = new CursosDao(conexaoBanco.getJdbcTemplate());
+        // A classe Main não precisa mais saber sobre os detalhes do S3.
+        // A configuração é lida pela classe LeituraS3.
 
-      Region region = Region.US_EAST_1;
-      String s3Path = System.getenv("S3_FILE_KEY");
+        // Defina a região correta do seu bucket
+        Region region = Region.US_EAST_1;
 
+        ConexaoBanco conexaoBanco = new ConexaoBanco();
+        LeituraExcel leituraExcel = new LeituraExcel();
+        InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
+        // CursosDao cursoDao = new CursosDao(conexaoBanco.getJdbcTemplate()); // Descomente se for usar
 
-      LeituraS3 leitorS3 = new LeituraS3(region);
+        System.out.println("Iniciando processo de carga a partir do S3...");
 
-      ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream(s3Path);
+        // Usamos try-with-resources para garantir que o leitor S3 e o stream sejam fechados.
+        try (LeituraS3 leitorS3 = new LeituraS3(region);
+             ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream()) { // A chamada agora é sem argumentos
 
+            List<Instituicao> instituicoes = leituraExcel.lerInstituicoes(s3ObjectStream);
 
+            for (Instituicao instituicao : instituicoes) {
+                instituicaoDao.save(instituicao);
+            }
 
-      List<Instituicao> instituicoes = leituraExcel.lerInstituicoes(s3ObjectStream);
+        } catch (Exception e) {
+            System.err.println("Ocorreu um erro fatal durante o processo.");
+            e.printStackTrace();
+        }
 
-      for (Instituicao instituicao : instituicoes){
-
-          instituicaoDao.save(instituicao);
-
-//          for (Curso curso : instituicao.getCursos()){
-//              cursoDao.save(curso);
-//          }
-
-
-//          System.out.println(instituicao);
-
-      }
-
-
-  }
+        System.out.println("Processo finalizado.");
+    }
 }

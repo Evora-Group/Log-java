@@ -5,11 +5,8 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-
+import java.io.InputStream; // Importação corrigida para o tipo de retorno
 
 public class LeituraS3 implements AutoCloseable {
 
@@ -21,15 +18,28 @@ public class LeituraS3 implements AutoCloseable {
                 .build();
     }
 
-
-    public ResponseInputStream<GetObjectResponse> obterInputStream(String s3Path) throws URISyntaxException {
-        URI s3Uri = new URI(s3Path);
+    /**
+     * Obtém um objeto do S3 como um InputStream.
+     * Este método lê as variáveis de ambiente 'S3_BUCKET' e 'S3_FILE_KEY'
+     * para localizar o arquivo.
+     *
+     * @return Um ResponseInputStream com os dados do objeto.
+     * @throws IllegalStateException se as variáveis de ambiente não estiverem definidas.
+     */
+    public ResponseInputStream<GetObjectResponse> obterInputStream() {
+        // CORREÇÃO: Lemos as variáveis de ambiente diretamente aqui.
         String bucketName = System.getenv("S3_BUCKET");
-        String keyName = System.getenv("S3_FILE_KEY"); // Remove a '/' inicial
+        String keyName = System.getenv("S3_FILE_KEY");
 
-        if (bucketName == null || keyName.isEmpty()) {
-            throw new URISyntaxException(s3Path, "Bucket ou chave inválidos no caminho S3.");
+        // Validação crucial para garantir que a aplicação está configurada corretamente
+        if (bucketName == null || bucketName.trim().isEmpty()) {
+            throw new IllegalStateException("Erro de configuração: A variável de ambiente 'S3_BUCKET' não está definida.");
         }
+        if (keyName == null || keyName.trim().isEmpty()) {
+            throw new IllegalStateException("Erro de configuração: A variável de ambiente 'S3_FILE_KEY' não está definida.");
+        }
+
+        System.out.println("Lendo do Bucket: " + bucketName + ", Chave: " + keyName);
 
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
