@@ -19,9 +19,9 @@ public class LeituraExcel {
 
     private static final Logger logger = LoggerFactory.getLogger(LeituraExcel.class);
     private static final Logger loggerDao = LoggerFactory.getLogger(InstituicaoDao.class);
-    private InstituicaoDao instituicaoDao;
-
-    public LeituraExcel() {
+    ConexaoBanco conexaoBanco = new ConexaoBanco();
+    InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
+    public LeituraExcel() throws InterruptedException {
 
     }
 
