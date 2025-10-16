@@ -27,7 +27,8 @@ public class Main {
         try (LeituraS3 leitorS3 = new LeituraS3(region);
              ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream()) { // A chamada agora é sem argumentos
 
-            List<Instituicao> instituicoes = leituraExcel.lerInstituicoes(s3ObjectStream);
+//            List<Instituicao> instituicoes = leituraExcel.lerInstituicoes(s3ObjectStream);
+            leituraExcel.lerInstituicoes(s3ObjectStream);
 
 //            for (Instituicao instituicao : instituicoes) {
 //                instituicaoDao.save(instituicao);

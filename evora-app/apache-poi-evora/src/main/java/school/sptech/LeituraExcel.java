@@ -25,7 +25,7 @@ public class LeituraExcel {
 
     }
 
-    public List<Instituicao> lerInstituicoes(InputStream caminhoArquivoInstituicao) {
+    public void lerInstituicoes(InputStream caminhoArquivoInstituicao) {
         logger.info("Iniciando a leitura do excel: " + caminhoArquivoInstituicao);
 
         List<Instituicao> instituicoes = new ArrayList<>();
@@ -74,7 +74,6 @@ public class LeituraExcel {
                     }
 
                     instituicaoDao.save(instituicao);
-                    instituicoes.add(instituicao);
                 }
             }
 
@@ -87,7 +86,7 @@ public class LeituraExcel {
             logThread.interrupt(); // garante interrupção mesmo em erro
         }
 
-        return instituicoes;
+//        return instituicoes;
     }
 
 //    public List<Curso> lerCursos(String caminhoArquivo, Integer idIes) {
