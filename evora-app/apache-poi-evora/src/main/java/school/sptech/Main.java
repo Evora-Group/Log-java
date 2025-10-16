@@ -18,7 +18,7 @@ public class Main {
       CursosDao cursoDao = new CursosDao(conexaoBanco.getJdbcTemplate());
 
       Region region = Region.SA_EAST_1;
-      String s3Path = System.getenv("BSD_URL");
+      String s3Path = System.getenv("S3_FILE_KEY");
 
 
       LeituraS3 leitorS3 = new LeituraS3(region);

@@ -10,11 +10,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-/**
- * Classe responsável por gerenciar a conexão com o AWS S3 e fornecer
- * streams de dados de objetos.
- * Implementa AutoCloseable para garantir que o cliente S3 seja fechado.
- */
+
 public class LeituraS3 implements AutoCloseable {
 
     private final S3Client s3Client;
