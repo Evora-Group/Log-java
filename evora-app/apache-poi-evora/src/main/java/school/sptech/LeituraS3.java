@@ -24,8 +24,8 @@ public class LeituraS3 implements AutoCloseable {
 
     public ResponseInputStream<GetObjectResponse> obterInputStream(String s3Path) throws URISyntaxException {
         URI s3Uri = new URI(s3Path);
-        String bucketName = s3Uri.getHost();
-        String keyName = s3Uri.getPath().substring(1); // Remove a '/' inicial
+        String bucketName = System.getenv("S3_BUCKET");
+        String keyName = System.getenv("S3_FILE_KEY"); // Remove a '/' inicial
 
         if (bucketName == null || keyName.isEmpty()) {
             throw new URISyntaxException(s3Path, "Bucket ou chave inválidos no caminho S3.");
