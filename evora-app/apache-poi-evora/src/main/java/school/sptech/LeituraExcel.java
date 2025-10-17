@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.*;
 
 
@@ -25,10 +26,8 @@ public class LeituraExcel {
 
     }
 
-    public void lerInstituicoes(InputStream caminhoArquivoInstituicao) {
+    public void lerInstituicoes(InputStream caminhoArquivoInstituicao){
         logger.info("Iniciando a leitura do excel: " + caminhoArquivoInstituicao);
-
-        List<Instituicao> instituicoes = new ArrayList<>();
 
         Thread logThread = new Thread(() -> {
             try {
@@ -69,11 +68,9 @@ public class LeituraExcel {
                     instituicao.setIdInstituicao((int) linha.getCell(7).getNumericCellValue());
                     instituicao.setNome(linha.getCell(8).getStringCellValue().toUpperCase());
 
-                    if (instituicoes.size() % 250 == 0) {
-                        loggerDao.info("Inserindo os valores no Banco de Dados");
-                    }
-
                     instituicaoDao.save(instituicao);
+
+
                 }
             }
 

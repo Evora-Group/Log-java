@@ -18,7 +18,7 @@ public class InstituicaoDao {
     public void save(Instituicao instituicao) {
 
         jdbcTemplate
-                .update("INSERT INTO Instituicao (nome, idInstituicao, uf, idMunicipio) VALUES (?, ?, ?, ?);",
+                .update("INSERT IGNORE INTO Instituicao (nome, idInstituicao, uf, idMunicipio) VALUES (?, ?, ?, ?);",
                         instituicao.getNome(),
                         instituicao.getIdInstituicao(),
                         instituicao.getUf(),
