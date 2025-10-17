@@ -2,8 +2,6 @@ package school.sptech;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import static school.sptech.LeituraExcel.loggerDao;
-
 public class InstituicaoDao {
 
     private final JdbcTemplate jdbcTemplate;
