@@ -1,0 +1,7 @@
+school\sptech\Curso.class
+school\sptech\LeituraExcel.class
+school\sptech\Instituicao.class
+school\sptech\CursosDao.class
+school\sptech\InstituicaoDao.class
+school\sptech\Main.class
+school\sptech\ConexaoBanco.class
