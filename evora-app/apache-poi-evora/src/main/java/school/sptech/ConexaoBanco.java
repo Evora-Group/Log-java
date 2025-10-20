@@ -17,11 +17,16 @@ public class ConexaoBanco {
 
         basicDataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
 //
+        String dbHost = (System.getenv("DB_HOST"));
+        String dbName = (System.getenv("DB_NAME"));
+
+        String url = String.format("jdbc:mysql://%s/%s?autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true", dbHost, dbName);
+
 //        basicDataSource.setUrl("jdbc:mysql://localhost:3306/evora");
 //        basicDataSource.setUsername("user");
 //        basicDataSource.setPassword("Urubu100");
 //
-        basicDataSource.setUrl(System.getenv("DB_URL"));
+        basicDataSource.setUrl(url);
         basicDataSource.setUsername(System.getenv("DB_USER"));
         basicDataSource.setPassword(System.getenv("DB_PASSWORD"));
 
