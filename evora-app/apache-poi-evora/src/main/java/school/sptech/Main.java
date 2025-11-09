@@ -96,7 +96,7 @@ public class Main {
                         contadorSalvos++;
                     }
                 } catch (Exception e) {
-                    logger.warn("Erro ao processar linha {}: {}", contadorLinhas, e.getMessage());
+                    logger.warn("Erro ao processar linha {}: {}", contadorLinhas, e.getMessage(), e);
                 }
 
                 // Log de progresso
