@@ -13,7 +13,7 @@ public class Main {
         Region region = Region.US_EAST_1;
         ConexaoBanco conexaoBanco = new ConexaoBanco();
         InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
-        LeituraExcel leituraExcel = new LeituraExcel(instituicaoDao);
+        LeituraExcel leituraExcel = new LeituraExcel();
 
         System.out.println("Iniciando processo de carga a partir do S3...");
 
@@ -21,7 +21,7 @@ public class Main {
         try (LeituraS3 leitorS3 = new LeituraS3(region);
              ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream()) {
 
-            leituraExcel.processarPlanilha(s3ObjectStream, 2023, "SP");
+            leituraExcel.processarPlanilhaInstituicao(s3ObjectStream, 2023, "SP", instituicaoDao);
 
         } catch (Exception e) {
             System.err.println("Ocorreu um erro fatal durante o processo.");

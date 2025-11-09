@@ -10,9 +10,10 @@ public class InstituicaoDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    ConexaoBanco conexaoBanco = new ConexaoBanco();
+    
     Instituicao instituicao = new Instituicao();
 
-    ConexaoBanco conexaoBanco = new ConexaoBanco();
 
 
     public void save(Instituicao instituicao) {

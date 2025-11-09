@@ -10,10 +10,12 @@ public class CursosDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    Curso curso = new Curso();
+
 
     ConexaoBanco conexaoBanco = new ConexaoBanco();
 
+
+    Curso curso = new Curso();
 
     public void save(Curso curso) {
 
