@@ -25,4 +25,13 @@ public class InstituicaoDao {
                         instituicao.getIdMunicipio());
     }
 
+    public Boolean existsById(Integer idInstituicao) {
+        String sql = "SELECT COUNT(1) FROM Instituicao WHERE idInstituicao = ?";
+
+        // Executa a query "SELECT COUNT..." e espera um Integer (número) de volta
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, idInstituicao);
+
+        // Retorna true se a contagem for maior que 0
+        return count != null && count > 0;
+    }
 }

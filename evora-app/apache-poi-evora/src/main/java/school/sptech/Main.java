@@ -18,11 +18,8 @@ public class Main {
         Region region = Region.US_EAST_1;
 
         // 1. Busque as chaves dos 3 arquivos das variáveis de ambiente
-        // Ex: "dados/instituicoes.xlsx"
         String instituicaoFileKey = System.getenv("S3_FILE_KEY_INSTITUICAO");
-        // Ex: "dados/cursos.xlsx"
-//        String cursoFileKey = System.getenv("S3_FILE_KEY_CURSO");
-//        // Ex: "dados/alunos.xlsx"
+        String cursoFileKey = System.getenv("S3_FILE_KEY_CURSO");
 //        String alunoFileKey = System.getenv("S3_FILE_KEY_ALUNO");
 
 
@@ -37,10 +34,11 @@ public class Main {
 
             // 4. Crie as Estratégias de Processamento (Processors)
             RowProcessor instituicaoProcessor = new InstituicaoRowProcessor(instituicaoDao, 2023, "SP");
-
+            RowProcessor cursoProcessor = new CursoRowProcessor(cursosDao, instituicaoDao);
 
             // 5. Execute os processos em sequência
             processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
+            processarArquivo(leitorS3, cursoFileKey, cursoProcessor, "cursos");
 
             try {
                 processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
