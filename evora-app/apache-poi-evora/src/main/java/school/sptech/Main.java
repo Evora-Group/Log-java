@@ -42,14 +42,40 @@ public class Main {
             // 5. Execute os processos em sequência
             processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
 
+            try {
+                processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
+
+                SlackNotifier.sendRichMessage(
+                        "✅",
+                        "Processo Finalizado",
+                        "Carga de Instituições concluída com sucesso.",
+                        "#36A64F"
+                );
+            } catch (Exception e) {
+                logger.error("Erro fatal durante importação.", e);
+
+                SlackNotifier.sendRichMessage(
+                        "🔴",
+                        "Erro de Execução",
+                        "Leitura do .xlsx não processada. Verificar Bucket S3.\nExceção: " + e.getMessage(),
+                        "#FF0000"
+                );
+            }
 
         } catch (InterruptedException e) {
             logger.error("Conexão com o banco foi interrompida.", e);
+            SlackNotifier.sendRichMessage(
+                    "🔴",
+                    "Erro de Execução",
+                    "Conexão com o Banco de Dados interrompida, verifique o MySQL" + e.getMessage(),
+                    "#FF0000"
+            );
         } catch (Exception e) {
             logger.error("Ocorreu um erro fatal em um dos processos de importação.", e);
         }
 
         logger.info("Todos os processos de importação foram finalizados.");
+
     }
 
     /**
@@ -107,9 +133,25 @@ public class Main {
 
         } catch (Exception e) {
             logger.error("Ocorreu um erro fatal durante o processo de {}: {}", nomeProcesso, e.getMessage(), e);
+
+            SlackNotifier.sendRichMessage(
+                    "🔴",
+                    "Erro de Execução",
+                    "Ocorreu um erro durante a extração dos Dados do .xlsx" + e.getMessage(),
+                    "#FF0000"
+            );
         }
 
         logger.info("--- Processo '{}' finalizado. Total de linhas lidas: {}. Registros salvos: {} ---",
                 nomeProcesso, (contadorLinhas - LINHA_CABECALHO), contadorSalvos);
+
+        SlackNotifier.sendRichMessage(
+                "✅",
+                "Processo Finalizado",
+                "Carga de Instituições concluída com sucesso.\nTotal de registros: " + contadorSalvos,
+                "#36A64F"
+        );
     }
+
+
 }

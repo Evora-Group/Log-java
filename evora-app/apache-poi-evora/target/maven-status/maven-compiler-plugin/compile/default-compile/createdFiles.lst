@@ -1,8 +1,9 @@
 school/sptech/Curso.class
 school/sptech/InstituicaoRowProcessor.class
 school/sptech/CursosDao.class
-school/sptech/ConexaoBanco.class
 school/sptech/Instituicao.class
+school/sptech/ConexaoBanco.class
+school/sptech/SlackNotifier.class
 school/sptech/InstituicaoDao.class
 school/sptech/Main.class
 school/sptech/LeituraS3.class
