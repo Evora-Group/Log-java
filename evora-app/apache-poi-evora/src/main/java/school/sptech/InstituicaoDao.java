@@ -32,6 +32,6 @@ public class InstituicaoDao {
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, idInstituicao);
 
         // Retorna true se a contagem for maior que 0
-        return count != null && count > 0;
+        return (count != null && count > 0);
     }
 }

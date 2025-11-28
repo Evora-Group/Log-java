@@ -4,11 +4,14 @@ import com.github.pjfanning.xlsx.StreamingReader;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
+import java.io.FileInputStream;
 
 public class Main {
 
@@ -22,9 +25,16 @@ public class Main {
         String cursoFileKey = System.getenv("S3_FILE_KEY_CURSO");
 //        String alunoFileKey = System.getenv("S3_FILE_KEY_ALUNO");
 
+//        String instituicaoFileKey = "br_inep_censo_educacao_superior_ies.xlsx";
+//        String cursoFileKey = "base-de-dados-ies.xlsx";
+//        String alunoFileKey = System.getenv("S3_FILE_KEY_ALUNO");
+
 
         // 2. Use try-with-resources para o Leitor S3 e configure os DAOs
         try (LeituraS3 leitorS3 = new LeituraS3(region)) {
+
+//        try {
+
 
             ConexaoBanco conexaoBanco = new ConexaoBanco();
 
@@ -39,6 +49,10 @@ public class Main {
             // 5. Execute os processos em sequência
             processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
             processarArquivo(leitorS3, cursoFileKey, cursoProcessor, "cursos");
+
+//            processarArquivo(instituicaoFileKey, instituicaoProcessor, "Instituições");
+//            processarArquivo(cursoFileKey, cursoProcessor, "cursos");
+
 
             try {
                 processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
@@ -80,6 +94,8 @@ public class Main {
      * Método auxiliar que executa um ciclo de importação (S3 -> Excel Stream -> BD).
      * Ele é genérico e funciona para qualquer arquivo, graças ao RowProcessor.
      */
+
+
     private static void processarArquivo(LeituraS3 leitorS3, String fileKey,
                                          RowProcessor processor, String nomeProcesso) {
 
@@ -94,13 +110,17 @@ public class Main {
         long contadorSalvos = 0;
         final int LOG_PROGRESSO_INTERVALO = 10000;
         final int LINHA_CABECALHO = 1; // Pula a primeira linha
-
-        // Use try-with-resources para o Stream do S3 e o Workbook de Streaming
+//
+//        // Use try-with-resources para o Stream do S3 e o Workbook de Streaming
         try (ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream(fileKey);
              Workbook workbook = StreamingReader.builder()
                      .rowCacheSize(100)    // Cache de linhas em memória
                      .bufferSize(4096)     // Buffer de leitura do arquivo
                      .open(s3ObjectStream)) { // Abre o Stream do S3
+//
+//        try (FileInputStream leitura = new FileInputStream(caminhoArquivoInstituicao)){
+//
+//            Workbook workbook = new XSSFWorkbook(leitura);
 
             logger.info("Workbook {} aberto em modo streaming...", fileKey);
             Sheet sheet = workbook.getSheetAt(0); // Pega a primeira planilha
@@ -150,6 +170,83 @@ public class Main {
                 "#36A64F"
         );
     }
+
+
+private static void processarArquivo(String fileKey,
+                                     RowProcessor processor, String nomeProcesso) {
+
+    logger.info("\n--- Iniciando processo de carga: {} ---", nomeProcesso);
+
+    if (fileKey == null || fileKey.isEmpty()) {
+        logger.warn("AVISO: Chave S3 para '{}' não definida (Ex: S3_FILE_KEY_{}). Pulando...",
+                nomeProcesso, nomeProcesso.toUpperCase());
+        return;
+    }
+
+    long contadorLinhas = 0;
+    long contadorSalvos = 0;
+    final int LOG_PROGRESSO_INTERVALO = 10000;
+    final int LINHA_CABECALHO = 1; // Pula a primeira linha
+//
+//        // Use try-with-resources para o Stream do S3 e o Workbook de Streaming
+//    try (ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream(fileKey);
+//         Workbook workbook = StreamingReader.builder()
+//                 .rowCacheSize(100)    // Cache de linhas em memória
+//                 .bufferSize(4096)     // Buffer de leitura do arquivo
+//                 .open(s3ObjectStream)) { // Abre o Stream do S3
+//
+    try (FileInputStream leitura = new FileInputStream(fileKey)){
+
+        Workbook workbook = new XSSFWorkbook(leitura);
+
+        logger.info("Workbook {} aberto em modo streaming...", fileKey);
+        Sheet sheet = workbook.getSheetAt(0); // Pega a primeira planilha
+
+        // A MÁGICA: Itera linha a linha sem carregar tudo na memória
+        for (Row row : sheet) {
+            contadorLinhas++;
+
+            if (contadorLinhas <= LINHA_CABECALHO) {
+                continue; // Pula o cabeçalho
+            }
+
+            // Boa prática: Trata erro por linha
+            // Se uma linha falhar (ex: NuberFormatException), ela não para o processo inteiro.
+            try {
+                if (processor.processAndSave(row)) {
+                    contadorSalvos++;
+                }
+            } catch (Exception e) {
+                logger.warn("Erro ao processar linha {}: {}", contadorLinhas, e.getMessage(), e);
+            }
+
+            // Log de progresso
+            if (contadorLinhas % LOG_PROGRESSO_INTERVALO == 0) {
+                logger.info("Processadas {} linhas. Salvos {} registros.", contadorLinhas, contadorSalvos);
+            }
+        }
+
+    } catch (Exception e) {
+        logger.error("Ocorreu um erro fatal durante o processo de {}: {}", nomeProcesso, e.getMessage(), e);
+
+        SlackNotifier.sendRichMessage(
+                "🔴",
+                "Erro de Execução",
+                "Ocorreu um erro durante a extração dos Dados do .xlsx" + e.getMessage(),
+                "#FF0000"
+        );
+    }
+
+    logger.info("--- Processo '{}' finalizado. Total de linhas lidas: {}. Registros salvos: {} ---",
+            nomeProcesso, (contadorLinhas - LINHA_CABECALHO), contadorSalvos);
+
+    SlackNotifier.sendRichMessage(
+            "✅",
+            "Processo Finalizado",
+            "Carga de Instituições concluída com sucesso.\nTotal de registros: " + contadorSalvos,
+            "#36A64F"
+    );
+}
 
 
 }

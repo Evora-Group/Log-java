@@ -1,6 +1,8 @@
 package school.sptech;
 
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 
 public class InstituicaoRowProcessor extends RowProcessor {
 
@@ -25,11 +27,11 @@ public class InstituicaoRowProcessor extends RowProcessor {
     @Override
     public boolean processAndSave(Row row) throws Exception {
 
-        Double ano = getSafeDouble(row, COL_ANO);
-        String uf = getSafeString(row, COL_UF);
-        String nome = getSafeString(row, COL_NOME_INSTITUICAO);
-        Double idMunicipio = getSafeDouble(row, COL_ID_MUNICIPIO);
-        Double idInstituicao = getSafeDouble(row, COL_ID_INSTITUICAO);
+        Double ano = super.getSafeDouble(row, COL_ANO);
+        String uf = super.getSafeString(row, COL_UF);
+        String nome = super.getSafeString(row, COL_NOME_INSTITUICAO);
+        Double idMunicipio = super.getSafeDouble(row, COL_ID_MUNICIPIO);
+        Double idInstituicao = super.getSafeDouble(row, COL_ID_INSTITUICAO);
 
         if (ano == null || uf == null || nome == null || idMunicipio == null || idInstituicao == null) {
             return false; // Ignora a linha por ter dados faltando

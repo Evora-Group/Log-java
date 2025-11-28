@@ -14,13 +14,10 @@ public class ConexaoBanco {
 
     public ConexaoBanco() throws InterruptedException {
         BasicDataSource basicDataSource = new BasicDataSource();
-
-        basicDataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
 //
 //        basicDataSource.setUrl("jdbc:mysql://localhost:3306/evora");
-//        basicDataSource.setUsername("user");
+//        basicDataSource.setUsername("root");
 //        basicDataSource.setPassword("Urubu100");
-//
 
         String dbHost = System.getenv("DB_HOST");
         String dbName = System.getenv("DB_NAME");
@@ -28,6 +25,8 @@ public class ConexaoBanco {
         basicDataSource.setUrl(url);
         basicDataSource.setUsername(System.getenv("DB_USER"));
         basicDataSource.setPassword(System.getenv("DB_PASSWORD"));
+
+        basicDataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
         this.basicDataSource = basicDataSource;
         this.jdbcTemplate = new JdbcTemplate(basicDataSource);
