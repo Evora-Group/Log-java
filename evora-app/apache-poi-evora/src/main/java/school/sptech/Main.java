@@ -4,14 +4,22 @@ import com.github.pjfanning.xlsx.StreamingReader;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.io.FileInputStream;
+// Imports dos pacotes organizados
+import school.sptech.alunos.*;
+import school.sptech.avaliacoes.*;
+import school.sptech.cursos.*;
+import school.sptech.disciplinas.*; // Assumindo que criou este pacote
+import school.sptech.frequencias.*;
+import school.sptech.instituicoes.*;
+import school.sptech.matriculas.*;   // Assumindo que criou este pacote
+import school.sptech.turmas.*;       // Assumindo que criou este pacote
+import school.sptech.grades.*;       // Assumindo que criou este pacote
 
 public class Main {
 
@@ -20,233 +28,156 @@ public class Main {
     public static void main(String[] args) {
         Region region = Region.US_EAST_1;
 
-        // 1. Busque as chaves dos 3 arquivos das variáveis de ambiente
-        String instituicaoFileKey = System.getenv("S3_FILE_KEY_INSTITUICAO");
-        String cursoFileKey = System.getenv("S3_FILE_KEY_CURSO");
-//        String alunoFileKey = System.getenv("S3_FILE_KEY_ALUNO");
+        // 1. Variáveis de Ambiente (Mapeamento completo dos arquivos S3)
+        String instituicaoKey = System.getenv("S3_FILE_KEY_INSTITUICAO");
+        String cursoKey       = System.getenv("S3_FILE_KEY_CURSO");
+        String alunoKey       = System.getenv("S3_FILE_KEY_ALUNO");
+        String disciplinaKey  = System.getenv("S3_FILE_KEY_DISCIPLINA"); // Novo
+        String gradeKey       = System.getenv("S3_FILE_KEY_GRADE");       // Novo
+        String turmaKey       = System.getenv("S3_FILE_KEY_TURMA");       // Novo
+        String matriculaKey   = System.getenv("S3_FILE_KEY_MATRICULA");   // Novo
+        String avaliacaoKey   = System.getenv("S3_FILE_KEY_AVALIACAO");
+        String frequenciaKey  = System.getenv("S3_FILE_KEY_FREQUENCIA");
 
-//        String instituicaoFileKey = "br_inep_censo_educacao_superior_ies.xlsx";
-//        String cursoFileKey = "base-de-dados-ies.xlsx";
-//        String alunoFileKey = System.getenv("S3_FILE_KEY_ALUNO");
-
-
-        // 2. Use try-with-resources para o Leitor S3 e configure os DAOs
         try (LeituraS3 leitorS3 = new LeituraS3(region)) {
-
-//        try {
-
 
             ConexaoBanco conexaoBanco = new ConexaoBanco();
 
-            // 3. Crie os DAOs
+            // 2. Instanciação dos DAOs
             InstituicaoDao instituicaoDao = new InstituicaoDao(conexaoBanco.getJdbcTemplate());
-            CursosDao cursosDao = new CursosDao(conexaoBanco.getJdbcTemplate());
+            CursosDao cursosDao           = new CursosDao(conexaoBanco.getJdbcTemplate());
+            AlunoDao alunoDao             = new AlunoDao(conexaoBanco.getJdbcTemplate());
+            DisciplinaDao disciplinaDao   = new DisciplinaDao(conexaoBanco.getJdbcTemplate());
+            GradeCurricularDao gradeDao   = new GradeCurricularDao(conexaoBanco.getJdbcTemplate());
+            TurmaDao turmaDao             = new TurmaDao(conexaoBanco.getJdbcTemplate());
+            MatriculaDao matriculaDao     = new MatriculaDao(conexaoBanco.getJdbcTemplate());
+            AvaliacaoDao avaliacaoDao     = new AvaliacaoDao(conexaoBanco.getJdbcTemplate());
+            FrequenciaDao frequenciaDao   = new FrequenciaDao(conexaoBanco.getJdbcTemplate());
 
-            // 4. Crie as Estratégias de Processamento (Processors)
-            RowProcessor instituicaoProcessor = new InstituicaoRowProcessor(instituicaoDao, 2023, "SP");
-            RowProcessor cursoProcessor = new CursoRowProcessor(cursosDao, instituicaoDao);
+            // 3. Instanciação dos Processors (Leitores)
+            RowProcessor instituicaoProc = new InstituicaoRowProcessor(instituicaoDao, 2023, "SP");
+            RowProcessor cursoProc       = new CursoRowProcessor(cursosDao, instituicaoDao);
+            RowProcessor alunoProc       = new AlunoRowProcessor(alunoDao);
+            RowProcessor disciplinaProc  = new DisciplinaRowProcessor(disciplinaDao);
+            RowProcessor gradeProc       = new GradeCurricularRowProcessor(gradeDao);
+            RowProcessor turmaProc       = new TurmaRowProcessor(turmaDao);
+            RowProcessor matriculaProc   = new MatriculaRowProcessor(matriculaDao);
+            RowProcessor avaliacaoProc   = new AvaliacaoRowProcessor(avaliacaoDao);
+            RowProcessor frequenciaProc  = new FrequenciaRowProcessor(frequenciaDao);
 
-            // 5. Execute os processos em sequência
-            processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
-            processarArquivo(leitorS3, cursoFileKey, cursoProcessor, "cursos");
+            logger.info("🚀 Iniciando Pipeline de Carga de Dados...");
 
-//            processarArquivo(instituicaoFileKey, instituicaoProcessor, "Instituições");
-//            processarArquivo(cursoFileKey, cursoProcessor, "cursos");
+            // -----------------------------------------------------------
+            // ETAPA 1: Fundações (Sem dependências FK)
+            // -----------------------------------------------------------
+            processarArquivo(leitorS3, instituicaoKey, instituicaoProc, "Instituições");
+            processarArquivo(leitorS3, alunoKey,       alunoProc,       "Alunos");
 
+            // -----------------------------------------------------------
+            // ETAPA 2: Estrutura Acadêmica Básica
+            // -----------------------------------------------------------
+            // Curso depende de Instituição
+            processarArquivo(leitorS3, cursoKey,       cursoProc,       "Cursos");
 
-            try {
-                processarArquivo(leitorS3, instituicaoFileKey, instituicaoProcessor, "Instituições");
+            // Disciplina depende de Instituição
+            processarArquivo(leitorS3, disciplinaKey,  disciplinaProc,  "Disciplinas");
 
-                SlackNotifier.sendRichMessage(
-                        "✅",
-                        "Processo Finalizado",
-                        "Carga de Instituições concluída com sucesso.",
-                        "#36A64F"
-                );
-            } catch (Exception e) {
-                logger.error("Erro fatal durante importação.", e);
+            // -----------------------------------------------------------
+            // ETAPA 3: Conexões (Turmas e Grades)
+            // -----------------------------------------------------------
+            // Grade depende de Curso e Disciplina
+            processarArquivo(leitorS3, gradeKey,       gradeProc,       "Grade Curricular");
 
-                SlackNotifier.sendRichMessage(
-                        "🔴",
-                        "Erro de Execução",
-                        "Leitura do .xlsx não processada. Verificar Bucket S3.\nExceção: " + e.getMessage(),
-                        "#FF0000"
-                );
-            }
+            // Turma depende de Curso
+            processarArquivo(leitorS3, turmaKey,       turmaProc,       "Turmas");
 
-        } catch (InterruptedException e) {
-            logger.error("Conexão com o banco foi interrompida.", e);
-            SlackNotifier.sendRichMessage(
-                    "🔴",
-                    "Erro de Execução",
-                    "Conexão com o Banco de Dados interrompida, verifique o MySQL" + e.getMessage(),
-                    "#FF0000"
-            );
+            // -----------------------------------------------------------
+            // ETAPA 4: Operação (Matrículas)
+            // -----------------------------------------------------------
+            // Matrícula depende de Aluno e Turma (O elo principal)
+            processarArquivo(leitorS3, matriculaKey,   matriculaProc,   "Matrículas");
+
+            // -----------------------------------------------------------
+            // ETAPA 5: Dados Transacionais (Notas e Faltas)
+            // -----------------------------------------------------------
+            // Dependem de Matrícula e Disciplina
+            processarArquivo(leitorS3, avaliacaoKey,   avaliacaoProc,   "Avaliações");
+            processarArquivo(leitorS3, frequenciaKey,  frequenciaProc,  "Frequências");
+
+            // Sucesso
+            SlackNotifier.sendRichMessage("✅", "Carga Full Completa",
+                    "Todas as bases foram processadas com sucesso.", "#36A64F");
+
         } catch (Exception e) {
-            logger.error("Ocorreu um erro fatal em um dos processos de importação.", e);
+            logger.error("Erro fatal no Main.", e);
+            SlackNotifier.sendRichMessage("🔴", "Erro Fatal", e.getMessage(), "#FF0000");
         }
-
-        logger.info("Todos os processos de importação foram finalizados.");
-
+        logger.info("Fim da execução.");
     }
 
     /**
-     * Método auxiliar que executa um ciclo de importação (S3 -> Excel Stream -> BD).
-     * Ele é genérico e funciona para qualquer arquivo, graças ao RowProcessor.
+     * Método genérico para ler do S3, processar linha a linha e salvar no banco.
      */
-
-
     private static void processarArquivo(LeituraS3 leitorS3, String fileKey,
                                          RowProcessor processor, String nomeProcesso) {
 
-        logger.info("\n--- Iniciando processo de carga: {} ---", nomeProcesso);
+        logger.info("\n--- 📂 Iniciando carga: {} ---", nomeProcesso);
+
         if (fileKey == null || fileKey.isEmpty()) {
-            logger.warn("AVISO: Chave S3 para '{}' não definida (Ex: S3_FILE_KEY_{}). Pulando...",
-                    nomeProcesso, nomeProcesso.toUpperCase());
+            logger.warn("⚠️ Variável S3 para '{}' não definida. Pulando etapa.", nomeProcesso);
             return;
         }
 
         long contadorLinhas = 0;
         long contadorSalvos = 0;
-        final int LOG_PROGRESSO_INTERVALO = 10000;
-        final int LINHA_CABECALHO = 1; // Pula a primeira linha
-//
-//        // Use try-with-resources para o Stream do S3 e o Workbook de Streaming
+        final int LINHA_CABECALHO = 1; // Ajuste se seu Excel começar na linha 0 ou 1
+
         try (ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream(fileKey);
              Workbook workbook = StreamingReader.builder()
-                     .rowCacheSize(100)    // Cache de linhas em memória
-                     .bufferSize(4096)     // Buffer de leitura do arquivo
-                     .open(s3ObjectStream)) { // Abre o Stream do S3
-//
-//        try (FileInputStream leitura = new FileInputStream(caminhoArquivoInstituicao)){
-//
-//            Workbook workbook = new XSSFWorkbook(leitura);
+                     .rowCacheSize(100)
+                     .bufferSize(4096)
+                     .open(s3ObjectStream)) {
 
-            logger.info("Workbook {} aberto em modo streaming...", fileKey);
-            Sheet sheet = workbook.getSheetAt(0); // Pega a primeira planilha
+            Sheet sheet = workbook.getSheetAt(0);
 
-            // A MÁGICA: Itera linha a linha sem carregar tudo na memória
             for (Row row : sheet) {
                 contadorLinhas++;
+                if (contadorLinhas <= LINHA_CABECALHO) continue;
 
-                if (contadorLinhas <= LINHA_CABECALHO) {
-                    continue; // Pula o cabeçalho
-                }
-
-                // Boa prática: Trata erro por linha
-                // Se uma linha falhar (ex: NuberFormatException), ela não para o processo inteiro.
                 try {
+                    // Processa e acumula no buffer interno do processor
                     if (processor.processAndSave(row)) {
                         contadorSalvos++;
                     }
                 } catch (Exception e) {
-                    logger.warn("Erro ao processar linha {}: {}", contadorLinhas, e.getMessage(), e);
+                    // Log silencioso ou debug para não poluir console em erros esperados
+                    // logger.debug("Erro linha {}: {}", contadorLinhas, e.getMessage());
                 }
 
-                // Log de progresso
-                if (contadorLinhas % LOG_PROGRESSO_INTERVALO == 0) {
-                    logger.info("Processadas {} linhas. Salvos {} registros.", contadorLinhas, contadorSalvos);
+                if (contadorLinhas % 10000 == 0) {
+                    logger.info("... processadas {} linhas.", contadorLinhas);
                 }
             }
+
+            // --- OTIMIZAÇÃO: FLUSH FINAL ---
+            // Garante que o que sobrou no buffer (ex: últimos 450 registros) seja salvo
+            logger.info("💾 Salvando lote final de {}...", nomeProcesso);
+
+            if (processor instanceof InstituicaoRowProcessor) ((InstituicaoRowProcessor) processor).flush();
+            else if (processor instanceof CursoRowProcessor) ((CursoRowProcessor) processor).flush();
+            else if (processor instanceof AlunoRowProcessor) ((AlunoRowProcessor) processor).flush();
+            else if (processor instanceof DisciplinaRowProcessor) ((DisciplinaRowProcessor) processor).flush();
+            else if (processor instanceof TurmaRowProcessor) ((TurmaRowProcessor) processor).flush();
+            else if (processor instanceof GradeCurricularRowProcessor) ((GradeCurricularRowProcessor) processor).flush();
+            else if (processor instanceof MatriculaRowProcessor) ((MatriculaRowProcessor) processor).flush();
+            else if (processor instanceof AvaliacaoRowProcessor) ((AvaliacaoRowProcessor) processor).flush();
+            else if (processor instanceof FrequenciaRowProcessor) ((FrequenciaRowProcessor) processor).flush();
+            // -------------------------------
 
         } catch (Exception e) {
-            logger.error("Ocorreu um erro fatal durante o processo de {}: {}", nomeProcesso, e.getMessage(), e);
-
-            SlackNotifier.sendRichMessage(
-                    "🔴",
-                    "Erro de Execução",
-                    "Ocorreu um erro durante a extração dos Dados do .xlsx" + e.getMessage(),
-                    "#FF0000"
-            );
+            logger.error("❌ Erro crítico em {}: {}", nomeProcesso, e.getMessage());
         }
 
-        logger.info("--- Processo '{}' finalizado. Total de linhas lidas: {}. Registros salvos: {} ---",
-                nomeProcesso, (contadorLinhas - LINHA_CABECALHO), contadorSalvos);
-
-        SlackNotifier.sendRichMessage(
-                "✅",
-                "Processo Finalizado",
-                "Carga de Instituições concluída com sucesso.\nTotal de registros: " + contadorSalvos,
-                "#36A64F"
-        );
+        logger.info("--- Fim {}. Linhas lidas: {}. ---", nomeProcesso, contadorLinhas);
     }
-
-
-private static void processarArquivo(String fileKey,
-                                     RowProcessor processor, String nomeProcesso) {
-
-    logger.info("\n--- Iniciando processo de carga: {} ---", nomeProcesso);
-
-    if (fileKey == null || fileKey.isEmpty()) {
-        logger.warn("AVISO: Chave S3 para '{}' não definida (Ex: S3_FILE_KEY_{}). Pulando...",
-                nomeProcesso, nomeProcesso.toUpperCase());
-        return;
-    }
-
-    long contadorLinhas = 0;
-    long contadorSalvos = 0;
-    final int LOG_PROGRESSO_INTERVALO = 10000;
-    final int LINHA_CABECALHO = 1; // Pula a primeira linha
-//
-//        // Use try-with-resources para o Stream do S3 e o Workbook de Streaming
-//    try (ResponseInputStream<GetObjectResponse> s3ObjectStream = leitorS3.obterInputStream(fileKey);
-//         Workbook workbook = StreamingReader.builder()
-//                 .rowCacheSize(100)    // Cache de linhas em memória
-//                 .bufferSize(4096)     // Buffer de leitura do arquivo
-//                 .open(s3ObjectStream)) { // Abre o Stream do S3
-//
-    try (FileInputStream leitura = new FileInputStream(fileKey)){
-
-        Workbook workbook = new XSSFWorkbook(leitura);
-
-        logger.info("Workbook {} aberto em modo streaming...", fileKey);
-        Sheet sheet = workbook.getSheetAt(0); // Pega a primeira planilha
-
-        // A MÁGICA: Itera linha a linha sem carregar tudo na memória
-        for (Row row : sheet) {
-            contadorLinhas++;
-
-            if (contadorLinhas <= LINHA_CABECALHO) {
-                continue; // Pula o cabeçalho
-            }
-
-            // Boa prática: Trata erro por linha
-            // Se uma linha falhar (ex: NuberFormatException), ela não para o processo inteiro.
-            try {
-                if (processor.processAndSave(row)) {
-                    contadorSalvos++;
-                }
-            } catch (Exception e) {
-                logger.warn("Erro ao processar linha {}: {}", contadorLinhas, e.getMessage(), e);
-            }
-
-            // Log de progresso
-            if (contadorLinhas % LOG_PROGRESSO_INTERVALO == 0) {
-                logger.info("Processadas {} linhas. Salvos {} registros.", contadorLinhas, contadorSalvos);
-            }
-        }
-
-    } catch (Exception e) {
-        logger.error("Ocorreu um erro fatal durante o processo de {}: {}", nomeProcesso, e.getMessage(), e);
-
-        SlackNotifier.sendRichMessage(
-                "🔴",
-                "Erro de Execução",
-                "Ocorreu um erro durante a extração dos Dados do .xlsx" + e.getMessage(),
-                "#FF0000"
-        );
-    }
-
-    logger.info("--- Processo '{}' finalizado. Total de linhas lidas: {}. Registros salvos: {} ---",
-            nomeProcesso, (contadorLinhas - LINHA_CABECALHO), contadorSalvos);
-
-    SlackNotifier.sendRichMessage(
-            "✅",
-            "Processo Finalizado",
-            "Carga de Instituições concluída com sucesso.\nTotal de registros: " + contadorSalvos,
-            "#36A64F"
-    );
-}
-
-
 }

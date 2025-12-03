@@ -1,4 +1,4 @@
-package school.sptech;
+package school.sptech.cursos;
 
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;

@@ -1,9 +1,10 @@
-package school.sptech;
+package school.sptech.avaliacoes;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
+import school.sptech.RowProcessor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,9 +16,9 @@ public class AvaliacaoRowProcessor extends RowProcessor {
     // VERIFIQUE SE ESTES ÍNDICES BATEM COM SEU EXCEL (A=0, B=1, etc)
     private static final int COL_ID_MATRICULA = 0;
     private static final int COL_ID_DISCIPLINA = 1;
-    private static final int COL_TIPO = 2;
-    private static final int COL_NOTA = 3;
-    private static final int COL_DATA = 4;
+    private static final int COL_TIPO = 4;
+    private static final int COL_NOTA = 2;
+    private static final int COL_DATA = 3;
 
     private final AvaliacaoDao avaliacaoDao;
     private final List<Avaliacao> buffer = new ArrayList<>();

@@ -1,4 +1,6 @@
-package school.sptech;
+package school.sptech.instituicoes;
+
+import school.sptech.cursos.Curso;
 
 import java.util.List;
 

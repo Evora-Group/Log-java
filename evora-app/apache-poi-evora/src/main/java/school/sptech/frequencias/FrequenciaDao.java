@@ -1,4 +1,4 @@
-package school.sptech;
+package school.sptech.frequencias;
 
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,7 +14,7 @@ public class FrequenciaDao {
     }
 
     public void saveAll(List<Frequencia> frequencias) {
-        String sql = "INSERT IGNORE INTO frequencia (fkMatricula, fkDisciplina, data_aula, presente, justificativa) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT IGNORE INTO frequencia (fkMatricula, fkDisciplina, data_aula, presente) VALUES (?, ?, ?, ?)";
 
         jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
@@ -24,7 +24,7 @@ public class FrequenciaDao {
                 ps.setInt(2, f.getFkDisciplina());
                 ps.setDate(3, java.sql.Date.valueOf(f.getDataAula()));
                 ps.setBoolean(4, f.getPresente());
-                ps.setString(5, f.getJustificativa());
+//                ps.setString(5, f.getJustificativa());
             }
 
             @Override
