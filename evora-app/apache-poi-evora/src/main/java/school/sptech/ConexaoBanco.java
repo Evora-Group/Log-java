@@ -14,7 +14,7 @@ public class ConexaoBanco {
 
     public ConexaoBanco() throws InterruptedException {
         BasicDataSource basicDataSource = new BasicDataSource();
-//
+
 //        basicDataSource.setUrl("jdbc:mysql://localhost:3306/evora");
 //        basicDataSource.setUsername("root");
 //        basicDataSource.setPassword("Urubu100");
