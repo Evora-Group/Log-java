@@ -15,7 +15,7 @@ public class FrequenciaRowProcessor extends RowProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(FrequenciaRowProcessor.class);
 
-    // Índices
+    // Índices das colunas no Excel
     private static final int COL_ID_MATRICULA = 0;
     private static final int COL_ID_DISCIPLINA = 1;
     private static final int COL_DATA = 2;
@@ -25,7 +25,7 @@ public class FrequenciaRowProcessor extends RowProcessor {
     private final List<Frequencia> buffer = new ArrayList<>();
     private static final int TAMANHO_LOTE = 1000;
 
-    // Formatador para data brasileira
+    // Formatador para data brasileira (dd/MM/yyyy)
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public FrequenciaRowProcessor(FrequenciaDao frequenciaDao) {
@@ -39,46 +39,73 @@ public class FrequenciaRowProcessor extends RowProcessor {
         String dataStr = getSafeString(row, COL_DATA);
         Double presenteDouble = getSafeDouble(row, COL_PRESENTE);
 
+        // Validação básica de chaves estrangeiras
         if (idMatricula == null || idDisciplina == null) {
-            // Logger temporário para debug
-            // logger.warn("Linha pulada: Matricula ou Disciplina nulos");
-            return false;
+            return false; // Pula linha se não tiver IDs
         }
 
         Frequencia frequencia = new Frequencia();
         frequencia.setFkMatricula(idMatricula.intValue());
         frequencia.setFkDisciplina(idDisciplina.intValue());
 
-        // CORREÇÃO AQUI:
-        if (dataStr != null && !dataStr.isEmpty()) {
+        // --- LÓGICA DE DATA ROBUSTA ---
+        if (dataStr != null && !dataStr.trim().isEmpty()) {
             try {
-                // Tenta formato ISO (yyyy-MM-dd) primeiro, se falhar tenta BR
-                if (dataStr.contains("-")) {
-                    frequencia.setDataAula(LocalDate.parse(dataStr.substring(0, 10)));
+                String dataLimpa = dataStr.trim(); // Remove espaços em branco acidentais
+
+                // Verifica se o formato é ISO (yyyy-MM-dd)
+                if (dataLimpa.contains("-")) {
+                    // Se tiver hora (ex: 2024-08-01 10:00), pega só a data
+                    if (dataLimpa.length() >= 10) {
+                        frequencia.setDataAula(LocalDate.parse(dataLimpa.substring(0, 10)));
+                    } else {
+                        // Data muito curta ou inválida para ISO
+                        logger.warn("Data ISO inválida ou muito curta: '{}'", dataLimpa);
+                        return false;
+                    }
+                }
+                // Verifica se é formato Brasileiro (dd/MM/yyyy)
+                else if (dataLimpa.contains("/")) {
+                    // Se tiver hora (ex: 01/08/2024 10:00), pega só a data
+                    if (dataLimpa.length() >= 10) {
+                        String apenasData = dataLimpa.substring(0, 10);
+                        frequencia.setDataAula(LocalDate.parse(apenasData, formatter));
+                    } else {
+                        // Tenta parse direto se for curto (ex: 1/8/2024) mas bate com o formatador
+                        // O formatador dd/MM/yyyy exige zeros a esquerda, então isso cairia no catch
+                        // mas é melhor tentar do que falhar direto.
+                        frequencia.setDataAula(LocalDate.parse(dataLimpa, formatter));
+                    }
                 } else {
-                    // Assume formato dd/MM/yyyy
-                    // Se houver hora junto (ex: 01/01/2023 00:00), pega só os 10 primeiros
-                    String dataLimpa = dataStr.length() >= 10 ? dataStr.substring(0, 10) : dataStr;
-                    frequencia.setDataAula(LocalDate.parse(dataLimpa, formatter));
+                    // Formato desconhecido (nem traço, nem barra)
+                    return false;
                 }
             } catch (DateTimeParseException e) {
-                logger.error("Erro de parse de data: '{}'. Ignorando linha.", dataStr);
+                // Loga o erro específico para sabermos qual data falhou
+                logger.error("Erro de parse de data na linha {}: '{}'. Ignorando registro.", row.getRowNum(), dataStr);
                 return false;
             }
         } else {
-            return false;
+            return false; // Sem data, sem registro
         }
 
+        // Conversão de Double (1.0/0.0) para Boolean
         frequencia.setPresente(presenteDouble != null && presenteDouble == 1.0);
 
+        // Adiciona ao buffer
         buffer.add(frequencia);
 
+        // Se encheu o lote, salva no banco
         if (buffer.size() >= TAMANHO_LOTE) {
             flush();
         }
         return true;
     }
 
+    /**
+     * Salva qualquer registro restante no buffer.
+     * Deve ser chamado ao final do loop principal.
+     */
     public void flush() {
         if (!buffer.isEmpty()) {
             frequenciaDao.saveAll(buffer);
