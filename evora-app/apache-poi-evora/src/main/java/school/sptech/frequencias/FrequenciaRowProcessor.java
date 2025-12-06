@@ -1,14 +1,17 @@
 package school.sptech.frequencias;
 
+import org.apache.poi.ss.usermodel.DateUtil; // <--- IMPORTANTE
 import org.apache.poi.ss.usermodel.Row;
 import school.sptech.RowProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FrequenciaRowProcessor extends RowProcessor {
@@ -23,6 +26,7 @@ public class FrequenciaRowProcessor extends RowProcessor {
     private final FrequenciaDao frequenciaDao;
     private final List<Frequencia> buffer = new ArrayList<>();
     private static final int TAMANHO_LOTE = 1000;
+
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public FrequenciaRowProcessor(FrequenciaDao frequenciaDao) {
@@ -36,19 +40,7 @@ public class FrequenciaRowProcessor extends RowProcessor {
         String dataStr = getSafeString(row, COL_DATA);
         Double presenteDouble = getSafeDouble(row, COL_PRESENTE);
 
-        // --- DEBUG: IMPRIME AS 5 PRIMEIRAS LINHAS NO CONSOLE ---
-        if (row.getRowNum() <= 5) {
-            System.out.println("--- DEBUG LINHA " + row.getRowNum() + " ---");
-            System.out.println("Matricula Raw: " + idMatricula);
-            System.out.println("Disciplina Raw: " + idDisciplina);
-            System.out.println("Data Raw: '" + dataStr + "'");
-            System.out.println("Presente Raw: " + presenteDouble);
-            System.out.println("----------------------------------");
-        }
-        // -------------------------------------------------------
-
         if (idMatricula == null || idDisciplina == null) {
-            if (row.getRowNum() <= 5) System.out.println("❌ PULANDO: IDs Nulos");
             return false;
         }
 
@@ -57,38 +49,56 @@ public class FrequenciaRowProcessor extends RowProcessor {
         frequencia.setFkDisciplina(idDisciplina.intValue());
 
         if (dataStr != null && !dataStr.trim().isEmpty()) {
+            String dataLimpa = dataStr.trim();
             try {
-                String dataLimpa = dataStr.trim();
+                // 1. Tenta formato ISO (yyyy-MM-dd)
                 if (dataLimpa.contains("-")) {
                     if (dataLimpa.length() >= 10) {
                         frequencia.setDataAula(LocalDate.parse(dataLimpa.substring(0, 10)));
                     } else {
-                        if (row.getRowNum() <= 5) System.out.println("❌ ERRO DATA ISO CURTA: " + dataLimpa);
                         return false;
                     }
-                } else if (dataLimpa.contains("/")) {
+                }
+                // 2. Tenta formato BR (dd/MM/yyyy)
+                else if (dataLimpa.contains("/")) {
                     if (dataLimpa.length() >= 10) {
                         frequencia.setDataAula(LocalDate.parse(dataLimpa.substring(0, 10), formatter));
                     } else {
-                        // Tenta parse direto (ex: 1/8/2024)
                         frequencia.setDataAula(LocalDate.parse(dataLimpa, formatter));
                     }
-                } else {
-                    if (row.getRowNum() <= 5) System.out.println("❌ FORMATO DESCONHECIDO: " + dataLimpa);
+                }
+                // 3. Tenta formato SERIAL DO EXCEL (ex: 45998)
+                else if (dataLimpa.matches("-?\\d+(\\.\\d+)?")) {
+                    // É um número! Vamos converter usando o Apache POI
+                    double valorNumerico = Double.parseDouble(dataLimpa);
+
+                    // Converte Double do Excel para java.util.Date
+                    Date javaDate = DateUtil.getJavaDate(valorNumerico);
+
+                    if (javaDate != null) {
+                        // Converte java.util.Date para LocalDate
+                        frequencia.setDataAula(javaDate.toInstant()
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate());
+                    } else {
+                        return false;
+                    }
+                }
+                else {
+                    // Formato realmente desconhecido
                     return false;
                 }
-            } catch (DateTimeParseException e) {
-                // LOG DE ERRO CRÍTICO
-                System.err.println("❌ ERRO PARSE DATA NA LINHA " + row.getRowNum() + ": " + dataStr);
-                e.printStackTrace(); // Mostra o erro exato no log
+            } catch (Exception e) {
+                // Se der qualquer erro de conversão, loga e pula
+                logger.error("Erro ao converter data na linha {}: '{}'", row.getRowNum(), dataStr);
                 return false;
             }
         } else {
-            if (row.getRowNum() <= 5) System.out.println("❌ DATA VAZIA");
             return false;
         }
 
         frequencia.setPresente(presenteDouble != null && presenteDouble == 1.0);
+
         buffer.add(frequencia);
 
         if (buffer.size() >= TAMANHO_LOTE) {
