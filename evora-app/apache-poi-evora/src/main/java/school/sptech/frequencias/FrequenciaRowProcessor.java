@@ -15,7 +15,6 @@ public class FrequenciaRowProcessor extends RowProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(FrequenciaRowProcessor.class);
 
-    // Índices das colunas no Excel
     private static final int COL_ID_MATRICULA = 0;
     private static final int COL_ID_DISCIPLINA = 1;
     private static final int COL_DATA = 2;
@@ -24,8 +23,6 @@ public class FrequenciaRowProcessor extends RowProcessor {
     private final FrequenciaDao frequenciaDao;
     private final List<Frequencia> buffer = new ArrayList<>();
     private static final int TAMANHO_LOTE = 1000;
-
-    // Formatador para data brasileira (dd/MM/yyyy)
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public FrequenciaRowProcessor(FrequenciaDao frequenciaDao) {
@@ -39,73 +36,67 @@ public class FrequenciaRowProcessor extends RowProcessor {
         String dataStr = getSafeString(row, COL_DATA);
         Double presenteDouble = getSafeDouble(row, COL_PRESENTE);
 
-        // Validação básica de chaves estrangeiras
+        // --- DEBUG: IMPRIME AS 5 PRIMEIRAS LINHAS NO CONSOLE ---
+        if (row.getRowNum() <= 5) {
+            System.out.println("--- DEBUG LINHA " + row.getRowNum() + " ---");
+            System.out.println("Matricula Raw: " + idMatricula);
+            System.out.println("Disciplina Raw: " + idDisciplina);
+            System.out.println("Data Raw: '" + dataStr + "'");
+            System.out.println("Presente Raw: " + presenteDouble);
+            System.out.println("----------------------------------");
+        }
+        // -------------------------------------------------------
+
         if (idMatricula == null || idDisciplina == null) {
-            return false; // Pula linha se não tiver IDs
+            if (row.getRowNum() <= 5) System.out.println("❌ PULANDO: IDs Nulos");
+            return false;
         }
 
         Frequencia frequencia = new Frequencia();
         frequencia.setFkMatricula(idMatricula.intValue());
         frequencia.setFkDisciplina(idDisciplina.intValue());
 
-        // --- LÓGICA DE DATA ROBUSTA ---
         if (dataStr != null && !dataStr.trim().isEmpty()) {
             try {
-                String dataLimpa = dataStr.trim(); // Remove espaços em branco acidentais
-
-                // Verifica se o formato é ISO (yyyy-MM-dd)
+                String dataLimpa = dataStr.trim();
                 if (dataLimpa.contains("-")) {
-                    // Se tiver hora (ex: 2024-08-01 10:00), pega só a data
                     if (dataLimpa.length() >= 10) {
                         frequencia.setDataAula(LocalDate.parse(dataLimpa.substring(0, 10)));
                     } else {
-                        // Data muito curta ou inválida para ISO
-                        logger.warn("Data ISO inválida ou muito curta: '{}'", dataLimpa);
+                        if (row.getRowNum() <= 5) System.out.println("❌ ERRO DATA ISO CURTA: " + dataLimpa);
                         return false;
                     }
-                }
-                // Verifica se é formato Brasileiro (dd/MM/yyyy)
-                else if (dataLimpa.contains("/")) {
-                    // Se tiver hora (ex: 01/08/2024 10:00), pega só a data
+                } else if (dataLimpa.contains("/")) {
                     if (dataLimpa.length() >= 10) {
-                        String apenasData = dataLimpa.substring(0, 10);
-                        frequencia.setDataAula(LocalDate.parse(apenasData, formatter));
+                        frequencia.setDataAula(LocalDate.parse(dataLimpa.substring(0, 10), formatter));
                     } else {
-                        // Tenta parse direto se for curto (ex: 1/8/2024) mas bate com o formatador
-                        // O formatador dd/MM/yyyy exige zeros a esquerda, então isso cairia no catch
-                        // mas é melhor tentar do que falhar direto.
+                        // Tenta parse direto (ex: 1/8/2024)
                         frequencia.setDataAula(LocalDate.parse(dataLimpa, formatter));
                     }
                 } else {
-                    // Formato desconhecido (nem traço, nem barra)
+                    if (row.getRowNum() <= 5) System.out.println("❌ FORMATO DESCONHECIDO: " + dataLimpa);
                     return false;
                 }
             } catch (DateTimeParseException e) {
-                // Loga o erro específico para sabermos qual data falhou
-                logger.error("Erro de parse de data na linha {}: '{}'. Ignorando registro.", row.getRowNum(), dataStr);
+                // LOG DE ERRO CRÍTICO
+                System.err.println("❌ ERRO PARSE DATA NA LINHA " + row.getRowNum() + ": " + dataStr);
+                e.printStackTrace(); // Mostra o erro exato no log
                 return false;
             }
         } else {
-            return false; // Sem data, sem registro
+            if (row.getRowNum() <= 5) System.out.println("❌ DATA VAZIA");
+            return false;
         }
 
-        // Conversão de Double (1.0/0.0) para Boolean
         frequencia.setPresente(presenteDouble != null && presenteDouble == 1.0);
-
-        // Adiciona ao buffer
         buffer.add(frequencia);
 
-        // Se encheu o lote, salva no banco
         if (buffer.size() >= TAMANHO_LOTE) {
             flush();
         }
         return true;
     }
 
-    /**
-     * Salva qualquer registro restante no buffer.
-     * Deve ser chamado ao final do loop principal.
-     */
     public void flush() {
         if (!buffer.isEmpty()) {
             frequenciaDao.saveAll(buffer);
